@@ -21,34 +21,30 @@ export default function MemberList() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const limit = 50;
+  const [search, setSearch] = useState("");
 
-  const fetchMembers = async (newOffset: number) => {
+  const fetchAllMembers = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/members?limit=${limit}&offset=${newOffset}`
-      );
-      if (!res.ok) throw new Error("取得に失敗しました");
-      const data = await res.json();
-      const list: Member[] = Array.isArray(data) ? data : data.members ?? [];
-      const dedupe = (arr: Member[]) => {
-        const seen = new Set<string>();
-        return arr.filter((m) => {
-          if (seen.has(m.discord_id)) return false;
-          seen.add(m.discord_id);
-          return true;
-        });
-      };
-      if (newOffset === 0) {
-        setMembers(dedupe(list));
-      } else {
-        setMembers((prev) => dedupe([...prev, ...list]));
+      const all: Member[] = [];
+      let offset = 0;
+      const limit = 100;
+      while (true) {
+        const res = await fetch(`/api/members?limit=${limit}&offset=${offset}`);
+        if (!res.ok) throw new Error("取得に失敗しました");
+        const data = await res.json();
+        const list: Member[] = Array.isArray(data) ? data : data.members ?? [];
+        all.push(...list);
+        if (list.length < limit) break;
+        offset += limit;
       }
-      setHasMore(list.length >= limit);
+      const seen = new Set<string>();
+      setMembers(all.filter((m) => {
+        if (seen.has(m.discord_id)) return false;
+        seen.add(m.discord_id);
+        return true;
+      }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
     } finally {
@@ -57,14 +53,8 @@ export default function MemberList() {
   };
 
   useEffect(() => {
-    fetchMembers(0);
+    fetchAllMembers();
   }, []);
-
-  const handleLoadMore = () => {
-    const next = offset + limit;
-    setOffset(next);
-    fetchMembers(next);
-  };
 
   if (error) {
     return (
@@ -74,14 +64,38 @@ export default function MemberList() {
     );
   }
 
+  const q = search.toLowerCase();
+  const filtered = members.filter((m) => {
+    if (!q) return true;
+    return (
+      m.display_name?.toLowerCase().includes(q) ||
+      m.username?.toLowerCase().includes(q) ||
+      m.discord_id?.includes(q) ||
+      m.profile?.real_name?.toLowerCase().includes(q) ||
+      m.profile?.student_id?.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div>
-      <p className="mb-6 text-sm text-zinc-500">
-        じょぎDiscordサーバーの部員一覧です。
-      </p>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-zinc-500">
+          {search
+            ? `${filtered.length} / ${members.length} 人`
+            : `${members.length} 人`}
+        </p>
+      </div>
+
+      <input
+        type="text"
+        placeholder="名前・学籍番号・Discord名で検索..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="mb-4 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+      />
 
       <div className="space-y-2">
-        {members.map((m, i) => {
+        {filtered.map((m, i) => {
           const missing = [
             !m.display_name && "表示名",
             !m.username && "ユーザー名",
@@ -141,22 +155,12 @@ export default function MemberList() {
         <p className="mt-4 text-center text-sm text-zinc-400">読み込み中...</p>
       )}
 
-      {!loading && members.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <p className="text-center text-sm text-zinc-400">
-          部員が見つかりません
+          {search ? "該当する部員が見つかりません" : "部員が見つかりません"}
         </p>
       )}
 
-      {!loading && hasMore && members.length > 0 && (
-        <div className="mt-4 text-center">
-          <button
-            onClick={handleLoadMore}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            もっと読み込む
-          </button>
-        </div>
-      )}
     </div>
   );
 }
