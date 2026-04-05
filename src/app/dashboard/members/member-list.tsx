@@ -103,21 +103,12 @@ export default function MemberList() {
                 <span className="font-medium">{m.display_name}</span>
                 <span className="text-xs text-zinc-400">@{m.username}</span>
               </div>
-              {m.profile?.real_name && (
-                <span className="text-sm text-zinc-500">
-                  {m.profile.real_name}
-                </span>
-              )}
-              {m.guild_roles && m.guild_roles.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {m.guild_roles.map((role) => (
-                    <span
-                      key={role}
-                      className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                    >
-                      {role}
-                    </span>
-                  ))}
+              {(m.profile?.real_name || m.profile?.student_id) && (
+                <div className="flex items-center gap-2 text-sm text-zinc-500">
+                  {m.profile?.real_name && <span>{m.profile.real_name}</span>}
+                  {m.profile?.student_id && (
+                    <span className="font-mono text-xs">{m.profile.student_id}</span>
+                  )}
                 </div>
               )}
             </div>
