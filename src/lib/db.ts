@@ -20,6 +20,9 @@ export function getDb(): Database.Database {
         updated_at TEXT DEFAULT (datetime('now'))
       );
 
+      -- マイグレーション: access_token カラム追加
+      -- ALTER TABLE users ADD COLUMN は IF NOT EXISTS 非対応のため別途実行
+
       CREATE TABLE IF NOT EXISTS api_keys (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -30,6 +33,13 @@ export function getDb(): Database.Database {
         FOREIGN KEY (user_id) REFERENCES users(id)
       );
     `);
+
+    // マイグレーション: users に access_token カラム追加
+    try {
+      db.exec("ALTER TABLE users ADD COLUMN access_token TEXT");
+    } catch {
+      // 既に存在する場合は無視
+    }
   }
   return db;
 }

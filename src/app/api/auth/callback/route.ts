@@ -58,14 +58,15 @@ export async function GET(request: NextRequest) {
   // DBにユーザーを登録/更新
   const db = getDb();
   db.prepare(`
-    INSERT INTO users (discord_id, username, display_name, avatar_url)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO users (discord_id, username, display_name, avatar_url, access_token)
+    VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(discord_id) DO UPDATE SET
       username = excluded.username,
       display_name = excluded.display_name,
       avatar_url = excluded.avatar_url,
+      access_token = excluded.access_token,
       updated_at = datetime('now')
-  `).run(userData.discord_id, userData.username, userData.display_name, userData.avatar_url);
+  `).run(userData.discord_id, userData.username, userData.display_name, userData.avatar_url, accessToken);
 
   // リダイレクト + Cookie設定
   const response = NextResponse.redirect(new URL("/dashboard", request.url));
