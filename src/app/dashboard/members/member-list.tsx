@@ -77,7 +77,7 @@ export default function MemberList() {
   return (
     <div>
       <p className="mb-6 text-sm text-zinc-500">
-        じょぎDiscordサーバーのメンバー一覧です。
+        じょぎDiscordサーバーの部員一覧です。
       </p>
 
       <div className="space-y-2">
@@ -143,7 +143,7 @@ export default function MemberList() {
 
       {!loading && members.length === 0 && (
         <p className="text-center text-sm text-zinc-400">
-          メンバーが見つかりません
+          部員が見つかりません
         </p>
       )}
 

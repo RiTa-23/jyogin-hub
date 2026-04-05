@@ -19,7 +19,7 @@ export default async function MembersPage() {
             >
               &larr; ダッシュボード
             </a>
-            <h1 className="text-lg font-bold">メンバー一覧</h1>
+            <h1 className="text-lg font-bold">部員一覧</h1>
           </div>
           <div className="flex items-center gap-2">
             {user.avatar_url && (

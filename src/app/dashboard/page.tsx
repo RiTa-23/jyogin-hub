@@ -42,9 +42,9 @@ export default async function DashboardPage() {
             href="/dashboard/members"
             className="flex-1 rounded-lg border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-500"
           >
-            <h2 className="font-bold">メンバー一覧</h2>
+            <h2 className="font-bold">部員一覧</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              じょぎサーバーのメンバーを確認
+              じょぎサーバーの部員を確認
             </p>
           </a>
         </div>
