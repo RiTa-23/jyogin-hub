@@ -11,15 +11,15 @@ interface ApiKey {
 }
 
 export default function ApiKeyManager() {
-  const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [newKeyName, setNewKeyName] = useState("");
+  const [activeKey, setActiveKey] = useState<ApiKey | null>(null);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchKeys = async () => {
     const res = await fetch("/api/keys");
     if (res.ok) {
-      setKeys(await res.json());
+      const keys: ApiKey[] = await res.json();
+      setActiveKey(keys.find((k) => k.active) ?? null);
     }
   };
 
@@ -27,30 +27,27 @@ export default function ApiKeyManager() {
     fetchKeys();
   }, []);
 
-  const handleCreate = async () => {
-    if (!newKeyName.trim()) return;
+  const handleIssue = async () => {
+    const msg = activeKey
+      ? "現在のAPIキーを無効化して再発行しますか？"
+      : "APIキーを発行しますか？";
+    if (!confirm(msg)) return;
+
     setLoading(true);
     try {
       const res = await fetch("/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newKeyName.trim() }),
+        body: JSON.stringify({ name: "default" }),
       });
       if (res.ok) {
         const data = await res.json();
         setNewKey(data.key);
-        setNewKeyName("");
         await fetchKeys();
       }
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleRevoke = async (id: number) => {
-    if (!confirm("このAPIキーを無効化しますか？")) return;
-    await fetch(`/api/keys/${id}`, { method: "DELETE" });
-    await fetchKeys();
   };
 
   return (
@@ -59,24 +56,6 @@ export default function ApiKeyManager() {
       <p className="mb-6 text-sm text-zinc-500">
         Jyoginデスクトップアプリとの連携に使用するAPIキーを管理します。
       </p>
-
-      {/* 新規発行 */}
-      <div className="mb-6 flex gap-2">
-        <input
-          type="text"
-          placeholder="キーの名前（例：自宅PC）"
-          value={newKeyName}
-          onChange={(e) => setNewKeyName(e.target.value)}
-          className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-        />
-        <button
-          onClick={handleCreate}
-          disabled={!newKeyName.trim() || loading}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:bg-zinc-400 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
-          発行
-        </button>
-      </div>
 
       {/* 発行直後のキー表示 */}
       {newKey && (
@@ -99,45 +78,30 @@ export default function ApiKeyManager() {
         </div>
       )}
 
-      {/* キー一覧 */}
-      <div className="space-y-2">
-        {keys.map((k) => (
-          <div
-            key={k.id}
-            className={`flex items-center justify-between rounded-lg border p-3 ${
-              k.active
-                ? "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
-                : "border-zinc-100 bg-zinc-50 opacity-60 dark:border-zinc-800 dark:bg-zinc-950"
-            }`}
-          >
-            <div>
-              <span className="text-sm font-medium">{k.name}</span>
-              <span className="ml-2 font-mono text-xs text-zinc-400">
-                {k.key}
-              </span>
-              <span className="ml-2 text-xs text-zinc-400">
-                {k.created_at?.slice(0, 10)}
-              </span>
-              {!k.active && (
-                <span className="ml-2 text-xs text-red-500">無効</span>
-              )}
-            </div>
-            {k.active && (
-              <button
-                onClick={() => handleRevoke(k.id)}
-                className="text-sm text-zinc-400 hover:text-red-500"
-              >
-                無効化
-              </button>
-            )}
+      {/* 現在のキー */}
+      {activeKey ? (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+          <div>
+            <span className="font-mono text-sm text-zinc-500">{activeKey.key}</span>
+            <span className="ml-2 text-xs text-zinc-400">
+              {activeKey.created_at?.slice(0, 10)}
+            </span>
           </div>
-        ))}
-        {keys.length === 0 && (
-          <p className="text-center text-sm text-zinc-400">
-            APIキーがありません
-          </p>
-        )}
-      </div>
+          <span className="text-xs text-green-600">有効</span>
+        </div>
+      ) : (
+        <p className="mb-4 text-center text-sm text-zinc-400">
+          APIキーがありません
+        </p>
+      )}
+
+      <button
+        onClick={handleIssue}
+        disabled={loading}
+        className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:bg-zinc-400 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+      >
+        {loading ? "処理中..." : activeKey ? "APIキーを再発行" : "APIキーを発行"}
+      </button>
     </div>
   );
 }
