@@ -75,6 +75,12 @@ export async function GET(request: NextRequest) {
     maxAge: 60 * 60 * 24 * 7,
     path: "/",
   });
+  response.cookies.set("access_token", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: tokenData.expires_in || 3600,
+    path: "/",
+  });
 
   return response;
 }
