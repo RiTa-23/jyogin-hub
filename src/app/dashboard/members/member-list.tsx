@@ -81,39 +81,60 @@ export default function MemberList() {
       </p>
 
       <div className="space-y-2">
-        {members.map((m, i) => (
-          <div
-            key={`${m.discord_id}-${i}`}
-            className="flex items-center gap-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
-          >
-            {m.avatar_url ? (
-              <img
-                src={m.avatar_url}
-                alt=""
-                className="h-10 w-10 shrink-0 rounded-full"
-              />
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-bold text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400">
-                {m.display_name?.charAt(0) || "?"}
-              </div>
-            )}
+        {members.map((m, i) => {
+          const missing = [
+            !m.display_name && "表示名",
+            !m.username && "ユーザー名",
+            !m.profile?.real_name && "本名",
+            !m.profile?.student_id && "学籍番号",
+          ].filter(Boolean) as string[];
+          const hasMissing = missing.length > 0;
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{m.display_name}</span>
-                <span className="text-xs text-zinc-400">@{m.username}</span>
-              </div>
-              {(m.profile?.real_name || m.profile?.student_id) && (
-                <div className="flex items-center gap-2 text-sm text-zinc-500">
-                  {m.profile?.real_name && <span>{m.profile.real_name}</span>}
-                  {m.profile?.student_id && (
-                    <span className="font-mono text-xs">{m.profile.student_id}</span>
-                  )}
+          return (
+            <div
+              key={`${m.discord_id}-${i}`}
+              className={`flex items-center gap-4 rounded-lg border p-4 ${
+                hasMissing
+                  ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950"
+                  : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+              }`}
+            >
+              {m.avatar_url ? (
+                <img
+                  src={m.avatar_url}
+                  alt=""
+                  className="h-10 w-10 shrink-0 rounded-full"
+                />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-bold text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400">
+                  {m.display_name?.charAt(0) || "?"}
                 </div>
               )}
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">
+                    {m.display_name || <span className="italic text-zinc-400">表示名なし</span>}
+                  </span>
+                  <span className="text-xs text-zinc-400">
+                    {m.username ? `@${m.username}` : <span className="italic">ユーザー名なし</span>}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-zinc-500">
+                  <span>{m.profile?.real_name || <span className="italic text-zinc-400">本名未登録</span>}</span>
+                  <span className="font-mono text-xs">
+                    {m.profile?.student_id || <span className="italic text-zinc-400">学籍番号未登録</span>}
+                  </span>
+                </div>
+                {hasMissing && (
+                  <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    未登録: {missing.join("・")}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {loading && (
