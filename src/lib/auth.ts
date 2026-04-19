@@ -5,7 +5,7 @@ export interface AuthUser {
   discord_id: string;
   username: string;
   display_name: string;
-  avatar_url: string;
+  avatar_url: string | null;
 }
 
 export async function getSessionUser(): Promise<AuthUser | null> {
@@ -16,7 +16,15 @@ export async function getSessionUser(): Promise<AuthUser | null> {
   try {
     const db = getDb();
     const user = db
-      .prepare("SELECT discord_id, username, display_name, avatar_url FROM users WHERE discord_id = ?")
+      .prepare(
+        `SELECT
+          discord_id,
+          username,
+          COALESCE(NULLIF(display_name, ''), username) AS display_name,
+          avatar_url
+        FROM users
+        WHERE discord_id = ?`
+      )
       .get(userId) as AuthUser | undefined;
     return user ?? null;
   } catch {

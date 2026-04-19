@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AttendanceView from "./attendance-view";
+import UserMenu from "../user-menu";
 
 export default async function AttendancesPage() {
   const user = await getSessionUser();
@@ -21,16 +22,7 @@ export default async function AttendancesPage() {
             </a>
             <h1 className="text-lg font-bold">出欠記録</h1>
           </div>
-          <div className="flex items-center gap-2">
-            {user.avatar_url && (
-              <img
-                src={user.avatar_url}
-                alt=""
-                className="h-8 w-8 rounded-full"
-              />
-            )}
-            <span className="text-sm font-medium">{user.display_name}</span>
-          </div>
+          <UserMenu displayName={user.display_name} avatarUrl={user.avatar_url} />
         </div>
       </header>
 
