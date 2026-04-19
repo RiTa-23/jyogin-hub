@@ -1,6 +1,8 @@
 import { getSessionUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import UserMenu from "./user-menu";
+import jyoginIcon from "../JyogiN.png";
 
 export default async function DashboardPage() {
   const user = await getSessionUser();
@@ -12,7 +14,10 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <h1 className="text-lg font-bold">JyoginHub</h1>
+          <h1 className="inline-flex items-center gap-2 text-lg font-bold">
+            <Image src={jyoginIcon} alt="JyoginHub" width={28} height={28} />
+            <span>JyoginHub</span>
+          </h1>
           <UserMenu displayName={user.display_name} avatarUrl={user.avatar_url} />
         </div>
       </header>
