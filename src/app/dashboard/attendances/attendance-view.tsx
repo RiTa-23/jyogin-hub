@@ -14,6 +14,9 @@ interface AttendanceRecord {
   note: string;
   scanned_at: string;
   synced_at: string;
+  discord_username: string | null;
+  discord_display_name: string | null;
+  discord_avatar_url: string | null;
 }
 
 export default function AttendanceView() {
@@ -62,6 +65,7 @@ export default function AttendanceView() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-700">
+                <th className="pb-2 pr-4 font-medium text-zinc-500"></th>
                 <th className="pb-2 pr-4 font-medium text-zinc-500">学籍番号</th>
                 <th className="pb-2 pr-4 font-medium text-zinc-500">氏名</th>
                 <th className="pb-2 pr-4 font-medium text-zinc-500">スキャン日時</th>
@@ -74,8 +78,31 @@ export default function AttendanceView() {
                   key={i}
                   className="border-b border-zinc-100 dark:border-zinc-800"
                 >
+                  <td className="py-2 pr-2">
+                    {r.discord_avatar_url ? (
+                      <img
+                        src={r.discord_avatar_url}
+                        alt=""
+                        className="h-8 w-8 rounded-full"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-xs font-bold text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400">
+                        ?
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2 pr-4 font-mono text-xs">{r.student_id}</td>
-                  <td className="py-2 pr-4">{r.student_name}</td>
+                  <td className="py-2 pr-4">
+                    <div>{r.student_name}</div>
+                    {r.discord_username && (
+                      <div className="text-xs text-zinc-400">
+                        {r.discord_display_name || r.discord_username}
+                        {r.discord_display_name && r.discord_display_name !== r.discord_username
+                          ? ` (@${r.discord_username})`
+                          : r.discord_username ? ` @${r.discord_username}` : ""}
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2 pr-4 text-xs text-zinc-500">
                     {r.scanned_at}
                   </td>
