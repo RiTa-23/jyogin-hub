@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ session: string }> }
+) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const { session } = await params;
+  const sessionName = decodeURIComponent(session);
+
+  const db = getDb();
+
+  try {
+    const result = db
+      .prepare("DELETE FROM synced_attendances WHERE session_name = ?")
+      .run(sessionName);
+
+    return NextResponse.json({ deleted: result.changes });
+  } catch {
+    return NextResponse.json({ error: "delete_failed" }, { status: 500 });
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ session: string }> }
