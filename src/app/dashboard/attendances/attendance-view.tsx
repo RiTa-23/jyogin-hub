@@ -19,11 +19,51 @@ interface AttendanceRecord {
   discord_avatar_url: string | null;
 }
 
+interface Member {
+  profile?: { student_id?: string };
+  username: string;
+  display_name: string;
+  avatar_url: string;
+}
+
+interface DiscordInfo {
+  username: string;
+  display_name: string;
+  avatar_url: string;
+}
+
+async function fetchMembers(): Promise<Map<string, DiscordInfo>> {
+  const memberMap = new Map<string, DiscordInfo>();
+  let offset = 0;
+  const limit = 100;
+  while (true) {
+    const res = await fetch(`/api/members?limit=${limit}&offset=${offset}`);
+    if (!res.ok) break;
+    const data = await res.json();
+    const list: Member[] = Array.isArray(data) ? data : data.members ?? [];
+    if (list.length === 0) break;
+    for (const m of list) {
+      const sid = m.profile?.student_id;
+      if (sid) {
+        memberMap.set(sid.toLowerCase(), {
+          username: m.username,
+          display_name: m.display_name,
+          avatar_url: m.avatar_url,
+        });
+      }
+    }
+    if (list.length < limit) break;
+    offset += limit;
+  }
+  return memberMap;
+}
+
 export default function AttendanceView() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [discordInfoLoading, setDiscordInfoLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/attendances")
@@ -34,11 +74,33 @@ export default function AttendanceView() {
 
   const handleSelect = async (sessionName: string) => {
     setSelected(sessionName);
+    setDiscordInfoLoading(true);
     const res = await fetch(
       `/api/attendances/${encodeURIComponent(sessionName)}`
     );
     const data = await res.json();
-    setRecords(data.attendances ?? []);
+    const records: AttendanceRecord[] = (data.attendances ?? []).map(
+      (a: Omit<AttendanceRecord, "discord_username" | "discord_display_name" | "discord_avatar_url">) => ({
+        ...a,
+        discord_username: null,
+        discord_display_name: null,
+        discord_avatar_url: null,
+      })
+    );
+    setRecords(records);
+
+    const memberMap = await fetchMembers();
+    const enriched = records.map((r) => {
+      const matched = memberMap.get(r.student_id.toLowerCase());
+      return {
+        ...r,
+        discord_username: matched?.username ?? null,
+        discord_display_name: matched?.display_name ?? null,
+        discord_avatar_url: matched?.avatar_url ?? null,
+      };
+    });
+    setRecords(enriched);
+    setDiscordInfoLoading(false);
   };
 
   if (loading) {
@@ -52,6 +114,7 @@ export default function AttendanceView() {
           onClick={() => {
             setSelected(null);
             setRecords([]);
+            setDiscordInfoLoading(false);
           }}
           className="mb-4 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
         >
@@ -79,7 +142,14 @@ export default function AttendanceView() {
                   className="border-b border-zinc-100 dark:border-zinc-800"
                 >
                   <td className="py-2 pr-2">
-                    {r.discord_avatar_url ? (
+                    {discordInfoLoading ? (
+                      <div className="flex h-8 w-8 items-center justify-center">
+                        <svg className="h-4 w-4 animate-spin text-zinc-400" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      </div>
+                    ) : r.discord_avatar_url ? (
                       <img
                         src={r.discord_avatar_url}
                         alt=""
