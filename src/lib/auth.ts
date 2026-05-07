@@ -8,6 +8,15 @@ export interface AuthUser {
   avatar_url: string | null;
 }
 
+const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS ?? "")
+  .split(",")
+  .map((id) => id.trim())
+  .filter(Boolean);
+
+export function isAdmin(user: AuthUser): boolean {
+  return ADMIN_IDS.includes(user.discord_id);
+}
+
 export async function getSessionUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
   const userId = cookieStore.get("user_id")?.value;

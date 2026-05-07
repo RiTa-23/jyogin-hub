@@ -1,4 +1,4 @@
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, isAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AttendanceView from "./attendance-view";
 import UserMenu from "../user-menu";
@@ -27,7 +27,7 @@ export default async function AttendancesPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-8">
-        <AttendanceView />
+        <AttendanceView isAdmin={isAdmin(user)} />
       </main>
     </div>
   );

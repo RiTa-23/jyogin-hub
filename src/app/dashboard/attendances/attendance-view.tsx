@@ -59,7 +59,7 @@ async function fetchMembers(): Promise<Map<string, DiscordInfo>> {
   return memberMap;
 }
 
-export default function AttendanceView() {
+export default function AttendanceView({ isAdmin }: { isAdmin: boolean }) {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -142,17 +142,19 @@ export default function AttendanceView() {
           &larr; セッション一覧に戻る
         </button>
 
-        <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold">{selected}</h2>
             <p className="text-sm text-zinc-500">{records.length}名</p>
           </div>
-          <button
-            onClick={handleDelete}
-            className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
-          >
-            このセッションを削除
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleDelete}
+              className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+            >
+              このセッションを削除
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -253,33 +255,35 @@ export default function AttendanceView() {
               </div>
               <span className="text-sm text-zinc-500">{s.count}名</span>
             </button>
-            <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (window.confirm(`「${s.session_name}」を削除してもよろしいですか？`)) {
-                  const res = await authFetch(
-                    `/api/attendances/${encodeURIComponent(s.session_name)}`,
-                    { method: "DELETE" }
-                  );
-                  if (res.ok) {
-                    setSessions((prev) => prev.filter((x) => x.session_name !== s.session_name));
-                    if (selected === s.session_name) {
-                      setSelected(null);
-                      setRecords([]);
-                      setDiscordInfoLoading(false);
+            {isAdmin && (
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`「${s.session_name}」を削除してもよろしいですか？`)) {
+                    const res = await authFetch(
+                      `/api/attendances/${encodeURIComponent(s.session_name)}`,
+                      { method: "DELETE" }
+                    );
+                    if (res.ok) {
+                      setSessions((prev) => prev.filter((x) => x.session_name !== s.session_name));
+                      if (selected === s.session_name) {
+                        setSelected(null);
+                        setRecords([]);
+                        setDiscordInfoLoading(false);
+                      }
+                    } else {
+                      alert("削除に失敗しました");
                     }
-                  } else {
-                    alert("削除に失敗しました");
                   }
-                }
-              }}
-              className="shrink-0 p-4 text-red-400 hover:text-red-600 dark:hover:text-red-400"
-              title="削除"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+                }}
+                className="shrink-0 p-4 text-red-400 hover:text-red-600 dark:hover:text-red-400"
+                title="削除"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
           </div>
         ))}
       </div>
