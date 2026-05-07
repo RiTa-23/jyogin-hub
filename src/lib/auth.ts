@@ -11,19 +11,17 @@ export interface AuthUser {
 export async function getSessionUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
   const userId = cookieStore.get("user_id")?.value;
-  if (!userId) return null;
+  const accessToken = cookieStore.get("access_token")?.value;
+  if (!userId || !accessToken) return null;
 
   try {
     const db = getDb();
     const user = db
       .prepare(
-        `SELECT
-          discord_id,
-          username,
-          COALESCE(NULLIF(display_name, ''), username) AS display_name,
-          avatar_url
-        FROM users
-        WHERE discord_id = ?`
+        `SELECT discord_id, username,
+           COALESCE(NULLIF(display_name, ''), username) AS display_name,
+           avatar_url
+         FROM users WHERE discord_id = ?`
       )
       .get(userId) as AuthUser | undefined;
     return user ?? null;

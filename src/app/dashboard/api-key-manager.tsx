@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/client-auth";
 
 interface ApiKey {
   id: number;
@@ -16,7 +17,7 @@ export default function ApiKeyManager() {
   const [loading, setLoading] = useState(false);
 
   const fetchKeys = async () => {
-    const res = await fetch("/api/keys");
+    const res = await authFetch("/api/keys");
     if (res.ok) {
       const keys: ApiKey[] = await res.json();
       setActiveKey(keys.find((k) => k.active) ?? null);
@@ -35,7 +36,7 @@ export default function ApiKeyManager() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/keys", {
+      const res = await authFetch("/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "default" }),

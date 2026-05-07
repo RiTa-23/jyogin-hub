@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/client-auth";
 
 interface Member {
   discord_id: string;
@@ -31,7 +32,7 @@ export default function MemberList() {
       let offset = 0;
       const limit = 100;
       while (true) {
-        const res = await fetch(`/api/members?limit=${limit}&offset=${offset}`);
+        const res = await authFetch(`/api/members?limit=${limit}&offset=${offset}`);
         if (!res.ok) throw new Error("取得に失敗しました");
         const data = await res.json();
         const list: Member[] = Array.isArray(data) ? data : data.members ?? [];

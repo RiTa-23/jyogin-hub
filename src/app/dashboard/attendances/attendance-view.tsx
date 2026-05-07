@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/client-auth";
 
 interface SessionSummary {
   session_name: string;
@@ -37,7 +38,7 @@ async function fetchMembers(): Promise<Map<string, DiscordInfo>> {
   let offset = 0;
   const limit = 100;
   while (true) {
-    const res = await fetch(`/api/members?limit=${limit}&offset=${offset}`);
+    const res = await authFetch(`/api/members?limit=${limit}&offset=${offset}`);
     if (!res.ok) break;
     const data = await res.json();
     const list: Member[] = Array.isArray(data) ? data : data.members ?? [];
@@ -66,16 +67,17 @@ export default function AttendanceView() {
   const [discordInfoLoading, setDiscordInfoLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/attendances")
+    authFetch("/api/attendances")
       .then((res) => res.json())
       .then((data) => setSessions(data.sessions ?? []))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   const handleSelect = async (sessionName: string) => {
     setSelected(sessionName);
     setDiscordInfoLoading(true);
-    const res = await fetch(
+    const res = await authFetch(
       `/api/attendances/${encodeURIComponent(sessionName)}`
     );
     const data = await res.json();
@@ -106,7 +108,7 @@ export default function AttendanceView() {
   const handleDelete = async () => {
     if (!selected || !window.confirm(`「${selected}」を削除してもよろしいですか？`)) return;
 
-    const res = await fetch(
+    const res = await authFetch(
       `/api/attendances/${encodeURIComponent(selected)}`,
       { method: "DELETE" }
     );
@@ -255,7 +257,7 @@ export default function AttendanceView() {
               onClick={async (e) => {
                 e.stopPropagation();
                 if (window.confirm(`「${s.session_name}」を削除してもよろしいですか？`)) {
-                  const res = await fetch(
+                  const res = await authFetch(
                     `/api/attendances/${encodeURIComponent(s.session_name)}`,
                     { method: "DELETE" }
                   );
