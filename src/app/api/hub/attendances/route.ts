@@ -17,30 +17,37 @@ export async function POST(request: NextRequest) {
 
   const db = getDb();
 
-  // attendancesテーブルがなければ作成
+  // attendancesテーブル作成（session_name + student_id でUNIQUE）
   db.exec(`
     CREATE TABLE IF NOT EXISTS synced_attendances (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       session_name TEXT NOT NULL,
-      student_id TEXT,
+      student_id TEXT NOT NULL,
       student_name TEXT,
       card_uid TEXT,
       note TEXT,
       scanned_at TEXT,
       synced_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id)
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      UNIQUE(session_name, student_id)
     );
   `);
 
-  const insert = db.prepare(`
-    INSERT INTO synced_attendances (user_id, session_name, student_id, student_name, card_uid, note, scanned_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+  const upsert = db.prepare(`
+    INSERT INTO synced_attendances (user_id, session_name, student_id, student_name, card_uid, note, scanned_at, synced_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(session_name, student_id) DO UPDATE SET
+      student_name = excluded.student_name,
+      card_uid = excluded.card_uid,
+      note = excluded.note,
+      scanned_at = excluded.scanned_at,
+      synced_at = datetime('now')
   `);
 
-  const insertMany = db.transaction((records: Array<Record<string, string>>) => {
+  const upsertMany = db.transaction((records: Array<Record<string, string>>) => {
     for (const r of records) {
-      insert.run(
+      upsert.run(
         auth.userId,
         session_name,
         r.student_id,
@@ -52,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
   });
 
-  insertMany(attendances);
+  upsertMany(attendances);
 
   return NextResponse.json({
     status: "synced",

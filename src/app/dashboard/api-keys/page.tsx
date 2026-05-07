@@ -1,9 +1,9 @@
 import { getSessionUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import MemberList from "./member-list";
+import ApiKeyManager from "../api-key-manager";
 import UserMenu from "../user-menu";
 
-export default async function MembersPage() {
+export default async function ApiKeysPage() {
   const user = await getSessionUser();
   if (!user) {
     redirect("/");
@@ -20,14 +20,14 @@ export default async function MembersPage() {
             >
               &larr; ダッシュボード
             </a>
-            <h1 className="text-lg font-bold">部員一覧</h1>
+            <h1 className="text-lg font-bold">APIキー管理</h1>
           </div>
           <UserMenu displayName={user.display_name} avatarUrl={user.avatar_url} />
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-8">
-        <MemberList />
+        <ApiKeyManager />
       </main>
     </div>
   );
