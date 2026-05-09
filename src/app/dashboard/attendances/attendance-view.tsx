@@ -347,7 +347,8 @@ export default function AttendanceView({ isAdmin }: { isAdmin: boolean }) {
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
-                  if (window.confirm(`「${s.session_name}」を削除してもよろしいですか？`)) {
+                  if (!window.confirm(`「${s.session_name}」を削除してもよろしいですか？`)) return;
+                  try {
                     const res = await authFetch(
                       `/api/attendances/${encodeURIComponent(s.session_name)}`,
                       { method: "DELETE" }
@@ -362,6 +363,8 @@ export default function AttendanceView({ isAdmin }: { isAdmin: boolean }) {
                     } else {
                       alert("削除に失敗しました");
                     }
+                  } catch {
+                    alert("削除に失敗しました");
                   }
                 }}
                 className="shrink-0 p-4 text-red-400 hover:text-red-600 dark:hover:text-red-400"
