@@ -71,3 +71,22 @@ export async function PUT(request: NextRequest) {
 
   return NextResponse.json({ status: "saved" });
 }
+
+export async function DELETE(request: NextRequest) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const { discord_id } = body;
+
+  if (!discord_id || typeof discord_id !== "string") {
+    return NextResponse.json({ error: "discord_id is required" }, { status: 400 });
+  }
+
+  const db = getDb();
+  db.prepare("DELETE FROM member_corrections WHERE discord_id = ?").run(discord_id);
+
+  return NextResponse.json({ status: "reset" });
+}

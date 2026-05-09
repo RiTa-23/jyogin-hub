@@ -81,6 +81,7 @@ export default function MemberList() {
     comment: "",
   });
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState<string | null>(null);
 
   const fetchAllMembers = async () => {
     setLoading(true);
@@ -172,6 +173,27 @@ export default function MemberList() {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleReset = async (discordId: string) => {
+    if (!window.confirm("この部員の修正をリセットしますか？")) return;
+    setResetting(discordId);
+    try {
+      const res = await authFetch("/api/members/corrections", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ discord_id: discordId }),
+      });
+      if (res.ok) {
+        setCorrections((prev) => {
+          const next = { ...prev };
+          delete next[discordId];
+          return next;
+        });
+      }
+    } finally {
+      setResetting(null);
     }
   };
 
@@ -284,6 +306,25 @@ export default function MemberList() {
                 )}
               </div>
 
+              {corrected && (
+                <button
+                  onClick={() => handleReset(original.discord_id)}
+                  disabled={resetting === original.discord_id}
+                  className="shrink-0 rounded-md p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950 dark:hover:text-red-400"
+                  title="修正をリセット"
+                >
+                  {resetting === original.discord_id ? (
+                    <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => openEdit(original)}
                 className="shrink-0 rounded-md p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
