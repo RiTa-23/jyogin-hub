@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateApiKey } from "@/lib/api-auth";
-import { get } from "@/lib/db";
+import { all, get } from "@/lib/db";
 
 const AUTH_SERVER_URL = process.env.AUTH_SERVER_URL!;
 
@@ -48,15 +48,32 @@ export async function GET(request: NextRequest) {
     offset += limit;
   }
 
-  // 必要なフィールドのみ返す
-  const members = allMembers.map((m: Record<string, unknown>) => ({
-    discord_id: m.discord_id,
-    username: m.username,
-    display_name: m.display_name,
-    avatar_url: m.avatar_url,
-    real_name: (m.profile as Record<string, unknown>)?.real_name || null,
-    student_id: (m.profile as Record<string, unknown>)?.student_id || null,
-  }));
+  // 補正データを取得
+  const corrections = await all<{
+    discord_id: string;
+    display_name: string | null;
+    real_name: string | null;
+    student_id: string | null;
+  }>(
+    `SELECT discord_id, display_name, real_name, student_id FROM member_corrections`
+  );
+  const corrMap = new Map<string, { display_name: string | null; real_name: string | null; student_id: string | null }>();
+  for (const c of corrections) {
+    corrMap.set(c.discord_id, { display_name: c.display_name, real_name: c.real_name, student_id: c.student_id });
+  }
+
+  // 必要なフィールドのみ返す（補正データがあれば優先）
+  const members = allMembers.map((m: Record<string, unknown>) => {
+    const c = corrMap.get(m.discord_id as string);
+    return {
+      discord_id: m.discord_id,
+      username: m.username,
+      display_name: c?.display_name ?? (m.display_name as string | null),
+      avatar_url: m.avatar_url,
+      real_name: c?.real_name ?? ((m.profile as Record<string, unknown>)?.real_name as string | null) ?? null,
+      student_id: c?.student_id ?? ((m.profile as Record<string, unknown>)?.student_id as string | null) ?? null,
+    };
+  });
 
   // 重複除去
   const seen = new Set<string>();
