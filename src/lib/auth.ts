@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getDb } from "@/lib/db";
+import { get } from "@/lib/db";
 
 export interface AuthUser {
   discord_id: string;
@@ -24,15 +24,13 @@ export async function getSessionUser(): Promise<AuthUser | null> {
   if (!userId || !accessToken) return null;
 
   try {
-    const db = getDb();
-    const user = db
-      .prepare(
-        `SELECT discord_id, username,
-           COALESCE(NULLIF(display_name, ''), username) AS display_name,
-           avatar_url
-         FROM users WHERE discord_id = ?`
-      )
-      .get(userId) as AuthUser | undefined;
+    const user = await get<AuthUser>(
+      `SELECT discord_id, username,
+         COALESCE(NULLIF(display_name, ''), username) AS display_name,
+         avatar_url
+       FROM users WHERE discord_id = ?`,
+      userId
+    );
     return user ?? null;
   } catch {
     return null;

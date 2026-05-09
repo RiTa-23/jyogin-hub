@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { get, run } from "@/lib/db";
 
 // APIキー無効化
 export async function DELETE(
@@ -14,15 +14,16 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const db = getDb();
-  const dbUser = db.prepare("SELECT id FROM users WHERE discord_id = ?").get(user.discord_id) as { id: number } | undefined;
+  const dbUser = await get<{ id: number }>("SELECT id FROM users WHERE discord_id = ?", user.discord_id);
   if (!dbUser) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const result = db.prepare(
-    "UPDATE api_keys SET active = 0 WHERE id = ? AND user_id = ?"
-  ).run(id, dbUser.id);
+  const result = await run(
+    "UPDATE api_keys SET active = 0 WHERE id = ? AND user_id = ?",
+    id,
+    dbUser.id
+  );
 
   if (result.changes === 0) {
     return NextResponse.json({ error: "Key not found" }, { status: 404 });

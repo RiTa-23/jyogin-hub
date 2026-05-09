@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser, isAdmin } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { all, get, run } from "@/lib/db";
 
 export async function PATCH(
   request: NextRequest,
@@ -26,17 +26,19 @@ export async function PATCH(
 
   const trimmed = newName.trim();
 
-  const db = getDb();
-  const conflict = db
-    .prepare("SELECT 1 FROM synced_attendances WHERE session_name = ? LIMIT 1")
-    .get(trimmed);
+  const conflict = await get(
+    "SELECT 1 FROM synced_attendances WHERE session_name = ? LIMIT 1",
+    trimmed
+  );
   if (conflict) {
     return NextResponse.json({ error: "already_exists" }, { status: 409 });
   }
 
-  const result = db
-    .prepare("UPDATE synced_attendances SET session_name = ? WHERE session_name = ?")
-    .run(trimmed, oldName);
+  const result = await run(
+    "UPDATE synced_attendances SET session_name = ? WHERE session_name = ?",
+    trimmed,
+    oldName
+  );
 
   if (result.changes === 0) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -60,12 +62,11 @@ export async function DELETE(
   const { session } = await params;
   const sessionName = decodeURIComponent(session);
 
-  const db = getDb();
-
   try {
-    const result = db
-      .prepare("DELETE FROM synced_attendances WHERE session_name = ?")
-      .run(sessionName);
+    const result = await run(
+      "DELETE FROM synced_attendances WHERE session_name = ?",
+      sessionName
+    );
 
     return NextResponse.json({ deleted: result.changes });
   } catch {
@@ -85,23 +86,20 @@ export async function GET(
   const { session } = await params;
   const sessionName = decodeURIComponent(session);
 
-  const db = getDb();
-
   try {
-    const attendances = db
-      .prepare(
-        `SELECT student_id, student_name, note, scanned_at, synced_at
-         FROM synced_attendances
-         WHERE session_name = ?
-         ORDER BY scanned_at`
-      )
-      .all(sessionName) as Array<{
-        student_id: string;
-        student_name: string;
-        note: string;
-        scanned_at: string;
-        synced_at: string;
-      }>;
+    const attendances = await all<{
+      student_id: string;
+      student_name: string;
+      note: string;
+      scanned_at: string;
+      synced_at: string;
+    }>(
+      `SELECT student_id, student_name, note, scanned_at, synced_at
+       FROM synced_attendances
+       WHERE session_name = ?
+       ORDER BY scanned_at`,
+      sessionName
+    );
 
     return NextResponse.json({ session_name: sessionName, attendances });
   } catch {

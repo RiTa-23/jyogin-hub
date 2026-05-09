@@ -3,7 +3,7 @@ import { authenticateApiKey } from "@/lib/api-auth";
 import { getDb } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
-  const auth = authenticateApiKey(request);
+  const auth = await authenticateApiKey(request);
   if (!auth) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -15,10 +15,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const db = getDb();
+  const db = await getDb();
 
   // attendancesテーブル作成（session_name + student_id でUNIQUE）
-  db.exec(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS synced_attendances (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const upsert = db.prepare(`
+  const sql = `
     INSERT INTO synced_attendances (user_id, session_name, student_id, student_name, card_uid, note, scanned_at, synced_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(session_name, student_id) DO UPDATE SET
@@ -49,23 +49,14 @@ export async function POST(request: NextRequest) {
       note = excluded.note,
       scanned_at = excluded.scanned_at,
       synced_at = datetime('now')
-  `);
+  `;
 
-  const upsertMany = db.transaction((records: Array<Record<string, string>>) => {
-    for (const r of records) {
-      upsert.run(
-        auth.userId,
-        session_name,
-        r.student_id,
-        r.student_name,
-        r.card_uid,
-        r.note || "",
-        r.scanned_at
-      );
-    }
-  });
+  const stmts = attendances.map((r: Record<string, string>) => ({
+    sql,
+    args: [auth.userId, session_name, r.student_id, r.student_name, r.card_uid, r.note || "", r.scanned_at],
+  }));
 
-  upsertMany(attendances);
+  await db.batch(stmts);
 
   return NextResponse.json({
     status: "synced",

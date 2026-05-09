@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateApiKey } from "@/lib/api-auth";
-import { getDb } from "@/lib/db";
+import { get } from "@/lib/db";
 
 const AUTH_SERVER_URL = process.env.AUTH_SERVER_URL!;
 
 export async function GET(request: NextRequest) {
-  const auth = authenticateApiKey(request);
+  const auth = await authenticateApiKey(request);
   if (!auth) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   // APIキー所有者のOAuthトークンをDBから取得
-  const db = getDb();
-  const user = db
-    .prepare("SELECT access_token FROM users WHERE id = ?")
-    .get(auth.userId) as { access_token: string | null } | undefined;
+  const user = await get<{ access_token: string | null }>(
+    "SELECT access_token FROM users WHERE id = ?",
+    auth.userId
+  );
 
   if (!user?.access_token) {
     return NextResponse.json(

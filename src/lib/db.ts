@@ -1,15 +1,15 @@
-import Database from "better-sqlite3";
-import path from "path";
+import { createClient, Client, InValue } from "@libsql/client";
 
-const DB_PATH = path.join(process.cwd(), "jyogin-hub.db");
+let db: Client | null = null;
 
-let db: Database.Database | null = null;
-
-export function getDb(): Database.Database {
+export async function getDb(): Promise<Client> {
   if (!db) {
-    db = new Database(DB_PATH);
-    db.pragma("journal_mode = WAL");
-    db.exec(`
+    db = createClient({
+      url: process.env.TURSO_DB_URL!,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         discord_id TEXT NOT NULL UNIQUE,
@@ -18,11 +18,17 @@ export function getDb(): Database.Database {
         avatar_url TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
-      );
+      )
+    `);
 
-      -- マイグレーション: access_token カラム追加
-      -- ALTER TABLE users ADD COLUMN は IF NOT EXISTS 非対応のため別途実行
+    // マイグレーション: ALTER TABLE は IF NOT EXISTS 非対応のため try/catch
+    try {
+      await db.execute("ALTER TABLE users ADD COLUMN access_token TEXT");
+    } catch {
+      // 既に存在する場合は無視
+    }
 
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS api_keys (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -31,8 +37,10 @@ export function getDb(): Database.Database {
         active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id)
-      );
+      )
+    `);
 
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS member_corrections (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         discord_id TEXT NOT NULL UNIQUE,
@@ -43,16 +51,48 @@ export function getDb(): Database.Database {
         what_to_do TEXT,
         comment TEXT,
         updated_at TEXT DEFAULT (datetime('now'))
-      );
+      )
     `);
-
-    // マイグレーション: users に access_token カラム追加
-    try {
-      db.exec("ALTER TABLE users ADD COLUMN access_token TEXT");
-    } catch {
-      // 既に存在する場合は無視
-    }
-
   }
   return db;
+}
+
+function rowsToObjects<T = Record<string, unknown>>(
+  columns: string[],
+  rows: unknown[]
+): T[] {
+  return rows.map((row) => {
+    const r = row as unknown[];
+    const obj: Record<string, unknown> = {};
+    for (let i = 0; i < columns.length; i++) {
+      obj[columns[i]] = r[i];
+    }
+    return obj as T;
+  });
+}
+
+export async function all<T = Record<string, unknown>>(
+  sql: string,
+  ...args: InValue[]
+): Promise<T[]> {
+  const client = await getDb();
+  const result = await client.execute({ sql, args });
+  return rowsToObjects<T>(result.columns, result.rows);
+}
+
+export async function get<T = Record<string, unknown>>(
+  sql: string,
+  ...args: InValue[]
+): Promise<T | undefined> {
+  const rows = await all<T>(sql, ...args);
+  return rows[0];
+}
+
+export async function run(
+  sql: string,
+  ...args: InValue[]
+): Promise<{ changes: number; lastInsertRowid: bigint | undefined }> {
+  const client = await getDb();
+  const result = await client.execute({ sql, args });
+  return { changes: result.rowsAffected ?? 0, lastInsertRowid: result.lastInsertRowid };
 }

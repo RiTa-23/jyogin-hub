@@ -1,15 +1,15 @@
 import { NextRequest } from "next/server";
-import { getDb } from "@/lib/db";
+import { get } from "@/lib/db";
 
-export function authenticateApiKey(request: NextRequest): { userId: number } | null {
+export async function authenticateApiKey(request: NextRequest): Promise<{ userId: number } | null> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
 
   const key = authHeader.slice(7);
-  const db = getDb();
-  const row = db
-    .prepare("SELECT user_id FROM api_keys WHERE key = ? AND active = 1")
-    .get(key) as { user_id: number } | undefined;
+  const row = await get<{ user_id: number }>(
+    "SELECT user_id FROM api_keys WHERE key = ? AND active = 1",
+    key
+  );
 
   return row ? { userId: row.user_id } : null;
 }
