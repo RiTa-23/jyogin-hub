@@ -65,6 +65,9 @@ export default function AttendanceView({ isAdmin }: { isAdmin: boolean }) {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [discordInfoLoading, setDiscordInfoLoading] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     authFetch("/api/attendances")
@@ -105,6 +108,44 @@ export default function AttendanceView({ isAdmin }: { isAdmin: boolean }) {
     setDiscordInfoLoading(false);
   };
 
+  const startRename = () => {
+    setNewName(selected ?? "");
+    setRenaming(true);
+  };
+
+  const handleRename = async () => {
+    if (!selected || !newName.trim() || newName.trim() === selected) {
+      setRenaming(false);
+      return;
+    }
+    setSavingName(true);
+    const res = await authFetch(
+      `/api/attendances/${encodeURIComponent(selected)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_name: newName.trim() }),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.session_name === selected
+            ? { ...s, session_name: data.session_name }
+            : s
+        )
+      );
+      setSelected(data.session_name);
+      setRenaming(false);
+    } else if (res.status === 409) {
+      alert("同名のセッションが既に存在します");
+    } else {
+      alert("リネームに失敗しました");
+    }
+    setSavingName(false);
+  };
+
   const handleDelete = async () => {
     if (!selected || !window.confirm(`「${selected}」を削除してもよろしいですか？`)) return;
 
@@ -143,11 +184,53 @@ export default function AttendanceView({ isAdmin }: { isAdmin: boolean }) {
         </button>
 
           <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">{selected}</h2>
+          <div className="flex items-center gap-2">
+            {renaming ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRename();
+                    if (e.key === "Escape") setRenaming(false);
+                  }}
+                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-lg font-bold dark:border-zinc-700 dark:bg-zinc-800"
+                  autoFocus
+                />
+                <button
+                  onClick={handleRename}
+                  disabled={savingName}
+                  className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white transition-colors hover:bg-zinc-700 disabled:bg-zinc-400 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                >
+                  {savingName ? "..." : "保存"}
+                </button>
+                <button
+                  onClick={() => setRenaming(false)}
+                  className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                >
+                  キャンセル
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold">{selected}</h2>
+                {isAdmin && (
+                  <button
+                    onClick={startRename}
+                    className="rounded-md p-1 text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+                    title="セッション名を編集"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
             <p className="text-sm text-zinc-500">{records.length}名</p>
           </div>
-          {isAdmin && (
+          {isAdmin && !renaming && (
             <button
               onClick={handleDelete}
               className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
