@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, isAdmin } from "@/lib/auth";
 import { all, run } from "@/lib/db";
 
 export async function GET() {
@@ -36,6 +36,9 @@ export async function PUT(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  if (!isAdmin(user)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   const body = await request.json();
   const { discord_id, display_name, real_name, student_id, hobbies, what_to_do, comment } = body;
@@ -71,6 +74,9 @@ export async function DELETE(request: NextRequest) {
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!isAdmin(user)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const body = await request.json();

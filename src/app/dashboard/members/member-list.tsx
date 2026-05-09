@@ -65,7 +65,7 @@ interface EditForm {
   comment: string;
 }
 
-export default function MemberList() {
+export default function MemberList({ isAdmin }: { isAdmin: boolean }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [corrections, setCorrections] = useState<CorrectionMap>({});
   const [loading, setLoading] = useState(true);
@@ -306,7 +306,7 @@ export default function MemberList() {
                 )}
               </div>
 
-              {corrected && (
+              {isAdmin && corrected && (
                 <button
                   onClick={() => handleReset(original.discord_id)}
                   disabled={resetting === original.discord_id}
@@ -325,15 +325,17 @@ export default function MemberList() {
                   )}
                 </button>
               )}
-              <button
-                onClick={() => openEdit(original)}
-                className="shrink-0 rounded-md p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                title="編集"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => openEdit(original)}
+                  className="shrink-0 rounded-md p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                  title="編集"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              )}
             </div>
           );
         })}

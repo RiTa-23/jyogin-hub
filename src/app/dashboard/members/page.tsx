@@ -1,4 +1,4 @@
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, isAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import MemberList from "./member-list";
 import UserMenu from "../user-menu";
@@ -27,7 +27,7 @@ export default async function MembersPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-8">
-        <MemberList />
+        <MemberList isAdmin={isAdmin(user)} />
       </main>
     </div>
   );
