@@ -21,6 +21,7 @@ interface AttendanceRecord {
 }
 
 interface Member {
+  discord_id: string;
   profile?: { student_id?: string };
   username: string;
   display_name: string;
@@ -33,7 +34,20 @@ interface DiscordInfo {
   avatar_url: string;
 }
 
+interface CorrectionsMap {
+  [discord_id: string]: {
+    student_id: string | null;
+  } | undefined;
+}
+
 async function fetchMembers(): Promise<Map<string, DiscordInfo>> {
+  let corrections: CorrectionsMap = {};
+  try {
+    const cRes = await authFetch("/api/members/corrections");
+    const cData = await cRes.json();
+    corrections = cData.corrections ?? {};
+  } catch {}
+
   const memberMap = new Map<string, DiscordInfo>();
   let offset = 0;
   const limit = 100;
@@ -43,8 +57,10 @@ async function fetchMembers(): Promise<Map<string, DiscordInfo>> {
     const data = await res.json();
     const list: Member[] = Array.isArray(data) ? data : data.members ?? [];
     if (list.length === 0) break;
+
     for (const m of list) {
-      const sid = m.profile?.student_id;
+      const corrected = corrections[m.discord_id];
+      const sid = corrected?.student_id ?? m.profile?.student_id;
       if (sid) {
         memberMap.set(sid.toLowerCase(), {
           username: m.username,
