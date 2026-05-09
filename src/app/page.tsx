@@ -1,5 +1,7 @@
 import { getSessionUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Image from "next/image";
+import jyoginIcon from "./JyogiN.png";
 
 export default async function Home() {
   const user = await getSessionUser();
@@ -16,7 +18,10 @@ export default async function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
       <div className="text-center">
-        <h1 className="mb-2 text-3xl font-bold">JyoginHub</h1>
+        <h1 className="mb-2 inline-flex items-center gap-3 text-3xl font-bold">
+          <Image src={jyoginIcon} alt="JyoginHub" width={40} height={40} />
+          <span>JyoginHub</span>
+        </h1>
         <p className="mb-8 text-zinc-500">NFC 出席確認 管理サーバー</p>
         <a
           href={authUrl}

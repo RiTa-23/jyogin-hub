@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/client-auth";
 
 interface Member {
   discord_id: string;
@@ -17,11 +18,70 @@ interface Member {
   };
 }
 
+interface Correction {
+  display_name: string | null;
+  real_name: string | null;
+  student_id: string | null;
+  hobbies: string | null;
+  what_to_do: string | null;
+  comment: string | null;
+}
+
+type CorrectionMap = Record<string, Correction>;
+
+function applyCorrection(m: Member, correction: Correction | undefined): Member {
+  if (!correction) return m;
+  return {
+    ...m,
+    display_name: correction.display_name ?? m.display_name,
+    profile: {
+      real_name: correction.real_name ?? m.profile?.real_name,
+      student_id: correction.student_id ?? m.profile?.student_id,
+      hobbies: correction.hobbies ?? m.profile?.hobbies,
+      what_to_do: correction.what_to_do ?? m.profile?.what_to_do,
+      comment: correction.comment ?? m.profile?.comment,
+    },
+  };
+}
+
+function hasCorrection(m: Member, correction: Correction | undefined): boolean {
+  if (!correction) return false;
+  return (
+    correction.display_name !== null ||
+    correction.real_name !== null ||
+    correction.student_id !== null ||
+    correction.hobbies !== null ||
+    correction.what_to_do !== null ||
+    correction.comment !== null
+  );
+}
+
+interface EditForm {
+  display_name: string;
+  real_name: string;
+  student_id: string;
+  hobbies: string;
+  what_to_do: string;
+  comment: string;
+}
+
 export default function MemberList() {
   const [members, setMembers] = useState<Member[]>([]);
+  const [corrections, setCorrections] = useState<CorrectionMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState<EditForm>({
+    display_name: "",
+    real_name: "",
+    student_id: "",
+    hobbies: "",
+    what_to_do: "",
+    comment: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState<string | null>(null);
 
   const fetchAllMembers = async () => {
     setLoading(true);
@@ -31,7 +91,7 @@ export default function MemberList() {
       let offset = 0;
       const limit = 100;
       while (true) {
-        const res = await fetch(`/api/members?limit=${limit}&offset=${offset}`);
+        const res = await authFetch(`/api/members?limit=${limit}&offset=${offset}`);
         if (!res.ok) throw new Error("取得に失敗しました");
         const data = await res.json();
         const list: Member[] = Array.isArray(data) ? data : data.members ?? [];
@@ -52,9 +112,100 @@ export default function MemberList() {
     }
   };
 
+  const fetchCorrections = async () => {
+    try {
+      const res = await authFetch("/api/members/corrections");
+      const data = await res.json();
+      setCorrections(data.corrections ?? {});
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     fetchAllMembers();
+    fetchCorrections();
   }, []);
+
+  const openEdit = (m: Member) => {
+    const c = corrections[m.discord_id];
+    setEditing(m.discord_id);
+    setForm({
+      display_name: c?.display_name ?? m.display_name ?? "",
+      real_name: c?.real_name ?? m.profile?.real_name ?? "",
+      student_id: c?.student_id ?? m.profile?.student_id ?? "",
+      hobbies: c?.hobbies ?? m.profile?.hobbies ?? "",
+      what_to_do: c?.what_to_do ?? m.profile?.what_to_do ?? "",
+      comment: c?.comment ?? m.profile?.comment ?? "",
+    });
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const res = await authFetch("/api/members/corrections", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discord_id: editing,
+          display_name: form.display_name || null,
+          real_name: form.real_name || null,
+          student_id: form.student_id || null,
+          hobbies: form.hobbies || null,
+          what_to_do: form.what_to_do || null,
+          comment: form.comment || null,
+        }),
+      });
+      if (res.ok) {
+        setCorrections((prev) => ({
+          ...prev,
+          [editing]: {
+            display_name: form.display_name || null,
+            real_name: form.real_name || null,
+            student_id: form.student_id || null,
+            hobbies: form.hobbies || null,
+            what_to_do: form.what_to_do || null,
+            comment: form.comment || null,
+          },
+        }));
+        setEditing(null);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async (discordId: string) => {
+    if (!window.confirm("この部員の修正をリセットしますか？")) return;
+    setResetting(discordId);
+    try {
+      const res = await authFetch("/api/members/corrections", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ discord_id: discordId }),
+      });
+      if (res.ok) {
+        setCorrections((prev) => {
+          const next = { ...prev };
+          delete next[discordId];
+          return next;
+        });
+      }
+    } finally {
+      setResetting(null);
+    }
+  };
+
+  const isCorrectionDirty = (m: Member): boolean => {
+    const c = corrections[m.discord_id];
+    if (!c) return false;
+    return (
+      (c.display_name !== null && c.display_name !== m.display_name) ||
+      (c.real_name !== null && c.real_name !== (m.profile?.real_name ?? null)) ||
+      (c.student_id !== null && c.student_id !== (m.profile?.student_id ?? null))
+    );
+  };
 
   if (error) {
     return (
@@ -65,7 +216,11 @@ export default function MemberList() {
   }
 
   const q = search.toLowerCase();
-  const filtered = members.filter((m) => {
+  const merged = members.map((m) => ({
+    member: applyCorrection(m, corrections[m.discord_id]),
+    original: m,
+  }));
+  const filtered = merged.filter(({ member: m }) => {
     if (!q) return true;
     return (
       m.display_name?.toLowerCase().includes(q) ||
@@ -95,7 +250,7 @@ export default function MemberList() {
       />
 
       <div className="space-y-2">
-        {filtered.map((m, i) => {
+        {filtered.map(({ member: m, original }) => {
           const missing = [
             !m.display_name && "表示名",
             !m.username && "ユーザー名",
@@ -103,14 +258,17 @@ export default function MemberList() {
             !m.profile?.student_id && "学籍番号",
           ].filter(Boolean) as string[];
           const hasMissing = missing.length > 0;
+          const corrected = hasCorrection(original, corrections[original.discord_id]);
 
           return (
             <div
-              key={`${m.discord_id}-${i}`}
+              key={original.discord_id}
               className={`flex items-center gap-4 rounded-lg border p-4 ${
-                hasMissing
-                  ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950"
-                  : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+                corrected
+                  ? "border-sky-300 bg-sky-50 dark:border-sky-700 dark:bg-sky-950"
+                  : hasMissing
+                    ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950"
+                    : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
               }`}
             >
               {m.avatar_url ? (
@@ -129,6 +287,7 @@ export default function MemberList() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium">
                     {m.display_name || <span className="italic text-zinc-400">表示名なし</span>}
+                    {corrected && <span className="ml-1.5 text-xs text-sky-500">(修正済み)</span>}
                   </span>
                   <span className="text-xs text-zinc-400">
                     {m.username ? `@${m.username}` : <span className="italic">ユーザー名なし</span>}
@@ -146,6 +305,35 @@ export default function MemberList() {
                   </div>
                 )}
               </div>
+
+              {corrected && (
+                <button
+                  onClick={() => handleReset(original.discord_id)}
+                  disabled={resetting === original.discord_id}
+                  className="shrink-0 rounded-md p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950 dark:hover:text-red-400"
+                  title="修正をリセット"
+                >
+                  {resetting === original.discord_id ? (
+                    <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={() => openEdit(original)}
+                className="shrink-0 rounded-md p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                title="編集"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
             </div>
           );
         })}
@@ -161,6 +349,91 @@ export default function MemberList() {
         </p>
       )}
 
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+            <h3 className="mb-4 text-lg font-bold">部員情報を編集</h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500">表示名</label>
+                <input
+                  type="text"
+                  value={form.display_name}
+                  onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500">本名</label>
+                <input
+                  type="text"
+                  value={form.real_name}
+                  onChange={(e) => setForm({ ...form, real_name: e.target.value })}
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500">学籍番号</label>
+                <input
+                  type="text"
+                  value={form.student_id}
+                  onChange={(e) => setForm({ ...form, student_id: e.target.value })}
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500">趣味</label>
+                <input
+                  type="text"
+                  value={form.hobbies}
+                  onChange={(e) => setForm({ ...form, hobbies: e.target.value })}
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500">やりたいこと</label>
+                <input
+                  type="text"
+                  value={form.what_to_do}
+                  onChange={(e) => setForm({ ...form, what_to_do: e.target.value })}
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500">コメント</label>
+                <textarea
+                  value={form.comment}
+                  onChange={(e) => setForm({ ...form, comment: e.target.value })}
+                  rows={3}
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setEditing(null)}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:bg-zinc-400 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+              >
+                {saving ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

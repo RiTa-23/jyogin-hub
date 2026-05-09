@@ -32,6 +32,18 @@ export function getDb(): Database.Database {
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id)
       );
+
+      CREATE TABLE IF NOT EXISTS member_corrections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        discord_id TEXT NOT NULL UNIQUE,
+        display_name TEXT,
+        real_name TEXT,
+        student_id TEXT,
+        hobbies TEXT,
+        what_to_do TEXT,
+        comment TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
     `);
 
     // マイグレーション: users に access_token カラム追加
@@ -40,6 +52,7 @@ export function getDb(): Database.Database {
     } catch {
       // 既に存在する場合は無視
     }
+
   }
   return db;
 }

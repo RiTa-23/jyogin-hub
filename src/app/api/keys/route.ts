@@ -46,10 +46,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const key = `jyogin_${crypto.randomBytes(32).toString("hex")}`;
+  // 既存の有効なキーを無効化
+  db.prepare("UPDATE api_keys SET active = 0 WHERE user_id = ? AND active = 1").run(dbUser.id);
 
+  const key = `jyogin_${crypto.randomBytes(32).toString("hex")}`;
   db.prepare("INSERT INTO api_keys (user_id, key, name) VALUES (?, ?, ?)").run(dbUser.id, key, name);
 
-  // 発行時のみフルキーを返す
   return NextResponse.json({ key, name });
 }
