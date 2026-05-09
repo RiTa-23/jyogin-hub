@@ -265,7 +265,7 @@ export default function MemberList() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium">
                     {m.display_name || <span className="italic text-zinc-400">表示名なし</span>}
-                    {corrected && <span className="ml-1.5 text-xs text-sky-500">(編集中)</span>}
+                    {corrected && <span className="ml-1.5 text-xs text-sky-500">(修正済み)</span>}
                   </span>
                   <span className="text-xs text-zinc-400">
                     {m.username ? `@${m.username}` : <span className="italic">ユーザー名なし</span>}
