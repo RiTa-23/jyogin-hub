@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "JyoginHub",
   description: "NFC 出席確認 管理サーバー",
+  icons: "/Jyogin.png",
 };
 
 export default function RootLayout({
