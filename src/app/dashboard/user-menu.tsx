@@ -56,12 +56,10 @@ export default function UserMenu({ displayName, avatarUrl }: UserMenuProps) {
 
       {open && (
         <div
-          role="menu"
           className="absolute right-0 z-10 mt-2 w-44 rounded-lg border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
         >
           <a
             href="/dashboard/api-keys"
-            role="menuitem"
             className="block rounded-md px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
             onClick={() => setOpen(false)}
           >
@@ -70,7 +68,6 @@ export default function UserMenu({ displayName, avatarUrl }: UserMenuProps) {
           <form action="/api/auth/logout" method="POST">
             <button
               type="submit"
-              role="menuitem"
               className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950"
             >
               ログアウト

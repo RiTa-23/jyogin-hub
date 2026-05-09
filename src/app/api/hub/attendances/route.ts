@@ -34,6 +34,12 @@ export async function POST(request: NextRequest) {
     );
   `);
 
+  for (const r of attendances) {
+    if (!r.student_id || typeof r.student_id !== "string") {
+      return NextResponse.json({ error: "invalid_record" }, { status: 400 });
+    }
+  }
+
   const upsert = db.prepare(`
     INSERT INTO synced_attendances (user_id, session_name, student_id, student_name, card_uid, note, scanned_at, synced_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))

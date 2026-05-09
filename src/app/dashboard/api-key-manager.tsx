@@ -68,9 +68,13 @@ export default function ApiKeyManager() {
             {newKey}
           </code>
           <button
-            onClick={() => {
-              navigator.clipboard.writeText(newKey);
-              setNewKey(null);
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(newKey);
+                setNewKey(null);
+              } catch {
+                alert("クリップボードへのコピーに失敗しました");
+              }
             }}
             className="mt-2 text-sm text-amber-700 underline dark:text-amber-300"
           >

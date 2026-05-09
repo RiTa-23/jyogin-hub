@@ -80,32 +80,37 @@ export default function AttendanceView({ isAdmin }: { isAdmin: boolean }) {
   const handleSelect = async (sessionName: string) => {
     setSelected(sessionName);
     setDiscordInfoLoading(true);
-    const res = await authFetch(
-      `/api/attendances/${encodeURIComponent(sessionName)}`
-    );
-    const data = await res.json();
-    const records: AttendanceRecord[] = (data.attendances ?? []).map(
-      (a: Omit<AttendanceRecord, "discord_username" | "discord_display_name" | "discord_avatar_url">) => ({
-        ...a,
-        discord_username: null,
-        discord_display_name: null,
-        discord_avatar_url: null,
-      })
-    );
-    setRecords(records);
+    try {
+      const res = await authFetch(
+        `/api/attendances/${encodeURIComponent(sessionName)}`
+      );
+      const data = await res.json();
+      const records: AttendanceRecord[] = (data.attendances ?? []).map(
+        (a: Omit<AttendanceRecord, "discord_username" | "discord_display_name" | "discord_avatar_url">) => ({
+          ...a,
+          discord_username: null,
+          discord_display_name: null,
+          discord_avatar_url: null,
+        })
+      );
+      setRecords(records);
 
-    const memberMap = await fetchMembers();
-    const enriched = records.map((r) => {
-      const matched = memberMap.get(r.student_id.toLowerCase());
-      return {
-        ...r,
-        discord_username: matched?.username ?? null,
-        discord_display_name: matched?.display_name ?? null,
-        discord_avatar_url: matched?.avatar_url ?? null,
-      };
-    });
-    setRecords(enriched);
-    setDiscordInfoLoading(false);
+      const memberMap = await fetchMembers();
+      const enriched = records.map((r) => {
+        const matched = memberMap.get(r.student_id.toLowerCase());
+        return {
+          ...r,
+          discord_username: matched?.username ?? null,
+          discord_display_name: matched?.display_name ?? null,
+          discord_avatar_url: matched?.avatar_url ?? null,
+        };
+      });
+      setRecords(enriched);
+    } catch {
+      setRecords([]);
+    } finally {
+      setDiscordInfoLoading(false);
+    }
   };
 
   const startRename = () => {

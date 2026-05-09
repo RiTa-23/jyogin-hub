@@ -15,7 +15,7 @@ export default async function DashboardPage() {
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
           <h1 className="inline-flex items-center gap-2 text-lg font-bold">
-            <Image src={jyoginIcon} alt="JyoginHub" width={28} height={28} />
+            <Image src={jyoginIcon} alt="" role="presentation" width={28} height={28} />
             <span>JyoginHub</span>
           </h1>
           <UserMenu displayName={user.display_name} avatarUrl={user.avatar_url} />
